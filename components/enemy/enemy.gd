@@ -75,3 +75,9 @@ func _on_hitbox_body_entered(body):
 			queue_free()
 		elif player_loses_life:
 			Global.lives -= 1
+
+## NEW: This function can be called by other nodes (like the player's attack)
+func take_damage():
+	# For now, we'll just destroy the enemy instantly.
+	# Later, you could add health, particle effects, etc.
+	queue_free()

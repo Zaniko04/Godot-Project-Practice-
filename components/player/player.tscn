@@ -34,7 +34,7 @@ color = Color(1, 1, 0, 1)
 unique_name_in_owner = true
 position = Vector2(0, -64)
 sprite_frames = ExtResource("2_msaml")
-animation = &"all"
+animation = &"attack"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 position = Vector2(0, -46)

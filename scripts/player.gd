@@ -9,12 +9,16 @@ const _PLAYER_ACTIONS = {
 		"jump": "player_1_jump",
 		"left": "player_1_left",
 		"right": "player_1_right",
+		## NEW: Added the attack action
+		"attack": "player_1_attack",
 	},
 	Global.Player.TWO:
 	{
 		"jump": "player_2_jump",
 		"left": "player_2_left",
 		"right": "player_2_right",
+		## NEW: Added the attack action
+		"attack": "player_2_attack",
 	},
 }
 
@@ -54,6 +58,13 @@ const _PLAYER_ACTIONS = {
 ## Can your character jump a second time while still in the air?
 @export var double_jump: bool = false
 
+## NEW: Attack timing properties
+@export_group("Attack")
+## How long the attack hitbox is active, in seconds.
+@export var attack_duration: float = 0.3
+## How long before the player can attack again, in seconds.
+@export var attack_cooldown: float = 0.6
+
 # If positive, the player is either on the ground, or left the ground less than this long ago
 var coyote_timer: float = 0
 
@@ -63,6 +74,9 @@ var jump_buffer_timer: float = 0
 # If true, the player is already jumping and can perform a double-jump
 var double_jump_armed: bool = false
 
+## NEW: Attack state variable
+var is_attacking: bool = false
+
 # Get the gravity from the project settings to be synced with RigidBody nodes.
 var gravity = ProjectSettings.get_setting("physics/2d/default_gravity")
 var original_position: Vector2
@@ -70,6 +84,12 @@ var original_position: Vector2
 @onready var _sprite: AnimatedSprite2D = %AnimatedSprite2D
 @onready var _initial_sprite_frames: SpriteFrames = %AnimatedSprite2D.sprite_frames
 @onready var _double_jump_particles: CPUParticles2D = %DoubleJumpParticles
+
+## NEW: Reverting to the "safer" get_node_or_null() method to debug null instance errors
+var _attack_hitbox: Area2D
+var _attack_collision_shape: CollisionShape2D
+var _attack_duration_timer: Timer
+var _attack_cooldown_timer: Timer
 
 
 func _set_sprite_frames(new_sprite_frames):
@@ -96,6 +116,29 @@ func _ready():
 	else:
 		Global.gravity_changed.connect(_on_gravity_changed)
 		Global.lives_changed.connect(_on_lives_changed)
+		
+		## NEW: Safely get nodes inside _ready() and add error checking
+		_attack_hitbox = get_node_or_null("AttackHitbox")
+		if _attack_hitbox:
+			# Get the child collision shape *from* the hitbox
+			_attack_collision_shape = _attack_hitbox.get_node_or_null("AttackCollisionShape")
+			if not _attack_collision_shape:
+				push_error("Player script: 'AttackHitbox' node does not have a child named 'AttackCollisionShape'!")
+			
+			# Connect signals only if the node exists
+			_attack_hitbox.area_entered.connect(_on_attack_hitbox_area_entered)
+		else:
+			push_error("Player script could not find node 'AttackHitbox'!")
+			
+		_attack_duration_timer = get_node_or_null("AttackDurationTimer")
+		if _attack_duration_timer:
+			_attack_duration_timer.timeout.connect(_on_attack_duration_timeout)
+		else:
+			push_error("Player script could not find node 'AttackDurationTimer'!")
+			
+		_attack_cooldown_timer = get_node_or_null("AttackCooldownTimer")
+		if not _attack_cooldown_timer:
+			push_error("Player script could not find node 'AttackCooldownTimer'!")
 
 	original_position = position
 	_set_speed(speed)
@@ -122,7 +165,42 @@ func stomp():
 	_jump()
 
 
+## NEW: Attack functions
+func _start_attack():
+	# Don't attack if already attacking or on cooldown
+	## NEW: Add checks to make sure our nodes are valid before using them
+	if is_attacking or not _attack_cooldown_timer or not _attack_cooldown_timer.is_stopped():
+		return
+		
+	is_attacking = true
+	
+	# Enable the collision shape so it can hit things
+	## NEW: Check if the collision shape exists before trying to use it
+	if _attack_collision_shape:
+		_attack_collision_shape.disabled = false
+	
+	# Start the timers
+	## NEW: Check if timers exist before using them
+	if _attack_duration_timer:
+		_attack_duration_timer.start(attack_duration)
+	if _attack_cooldown_timer:
+		_attack_cooldown_timer.start(attack_cooldown)
+	
+	# Play the animation
+	_sprite.play("attack")
+
+## NEW: This function is called when the AttackDurationTimer finishes
+func _on_attack_duration_timeout():
+	# The attack is now over
+	is_attacking = false
+	# Disable the hitbox so it doesn't hit things anymore
+	## NEW: Check if the collision shape exists
+	if _attack_collision_shape:
+		_attack_collision_shape.disabled = true
+
+
 func _player_just_pressed(action):
+	# ... (no changes in this function)
 	if player == Global.Player.BOTH:
 		return (
 			Input.is_action_just_pressed(_PLAYER_ACTIONS[Global.Player.ONE][action])
@@ -132,6 +210,7 @@ func _player_just_pressed(action):
 
 
 func _player_just_released(action):
+	## NEW: Restored the missing function body
 	if player == Global.Player.BOTH:
 		return (
 			Input.is_action_just_released(_PLAYER_ACTIONS[Global.Player.ONE][action])
@@ -141,6 +220,7 @@ func _player_just_released(action):
 
 
 func _get_player_axis(action_a, action_b):
+	# ... (no changes in this function)
 	if player == Global.Player.BOTH:
 		return clamp(
 			(
@@ -183,30 +263,49 @@ func _physics_process(delta):
 	# Add the gravity.
 	if coyote_timer <= 0:
 		velocity.y += gravity * delta
+		
+	## NEW: Handle Attack
+	if _player_just_pressed("attack"):
+		_start_attack()
 
 	# Get the input direction and handle the movement/deceleration.
 	# As good practice, you should replace UI actions with custom gameplay actions.
 	var direction = _get_player_axis("left", "right")
-	if direction:
-		velocity.x = move_toward(
-			velocity.x,
-			sign(direction) * speed,
-			abs(direction) * acceleration * delta,
-		)
-	else:
-		velocity.x = move_toward(velocity.x, 0, acceleration * delta)
-
-	if velocity == Vector2.ZERO:
-		_sprite.play("idle")
-	else:
-		if not is_on_floor():
-			if velocity.y > 0:
-				_sprite.play("jump_down")
-			else:
-				_sprite.play("jump_up")
+	
+	## NEW: Don't allow movement input to change velocity while attacking
+	if not is_attacking:
+		if direction:
+			velocity.x = move_toward(
+				velocity.x,
+				sign(direction) * speed,
+				abs(direction) * acceleration * delta,
+			)
 		else:
-			_sprite.play("walk")
-		_sprite.flip_h = velocity.x < 0
+			velocity.x = move_toward(velocity.x, 0, acceleration * delta)
+
+	## NEW: This whole animation block is now wrapped in "if not is_attacking"
+	# This stops the walk/jump animations from overriding the attack animation.
+	if not is_attacking:
+		if velocity == Vector2.ZERO:
+			_sprite.play("idle")
+		else:
+			if not is_on_floor():
+				if velocity.y > 0:
+					_sprite.play("jump_down")
+				else:
+					_sprite.play("jump_up")
+			else:
+				_sprite.play("walk")
+			
+			# Only change flip direction if moving
+			if velocity.x != 0:
+				_sprite.flip_h = velocity.x < 0
+
+		## NEW: Flip the AttackHitbox to match the player's direction
+		# We use scale.x to flip the entire node and its collision shape.
+		## NEW: Check if hitbox exists first
+		if _attack_hitbox:
+			_attack_hitbox.scale.x = -1 if _sprite.flip_h else 1
 
 	move_and_slide()
 
@@ -219,8 +318,42 @@ func reset():
 	velocity = Vector2.ZERO
 	coyote_timer = 0
 	jump_buffer_timer = 0
+	## NEW: Reset attack state on reset
+	is_attacking = false
+	
+	## NEW: Add checks before trying to access nodes
+	if _attack_collision_shape:
+		_attack_collision_shape.disabled = true
+	if _attack_duration_timer:
+		_attack_duration_timer.stop()
+	if _attack_cooldown_timer:
+		_attack_cooldown_timer.stop()
 
 
 func _on_lives_changed():
 	if Global.lives > 0:
 		reset()
+
+
+## NEW: This function is called by the AttackHitbox's "area_entered" signal
+## We connected this in the editor in Step 1.
+func _on_attack_hitbox_area_entered(area):
+	# 'area' is the node that our hitbox just touched (the Enemy's "Hitbox").
+	
+	## NEW: Add print statements for debugging
+	print("Attack hit an area: ", area.name)
+	
+	# We get the parent of the area, which should be the main "Enemy" node.
+	var parent = area.get_parent()
+	
+	if parent:
+		print("The area's parent is: ", parent.name)
+		# We check if the parent exists AND has the "take_damage" function.
+		if parent.has_method("take_damage"):
+			print("Parent has take_damage! Calling it.")
+			# If it does, tell that parent (the Enemy) to run its function!
+			parent.take_damage()
+		else:
+			print("Parent does NOT have take_damage function.")
+	else:
+		print("Area has no parent.")

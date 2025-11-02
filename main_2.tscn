@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3 uid="uid://57rkx5grasu1"]
+[gd_scene load_steps=12 format=3 uid="uid://57rkx5grasu1"]
 
 [ext_resource type="PackedScene" uid="uid://cswheshouik14" path="res://rules_goals/game_logic.tscn" id="1_11jtl"]
 [ext_resource type="PackedScene" uid="uid://dthyncc3spfks" path="res://spaces/dangerzone.tscn" id="2_eawnh"]
@@ -11,22 +11,24 @@
 [ext_resource type="PackedScene" uid="uid://dk0xon0k7ga23" path="res://components/enemy/enemy.tscn" id="9_t5rjf"]
 [ext_resource type="PackedScene" uid="uid://beuisy5yrw0bq" path="res://components/flag/flag.tscn" id="10_77tfw"]
 
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_hpglo"]
+
 [node name="main2" type="Node2D"]
 
 [node name="GameLogic" parent="." instance=ExtResource("1_11jtl")]
 win_by_collecting_coins = true
 coins_to_win = 10
 win_by_reaching_flag = true
+lives = 9
 
 [node name="Dangerzone" parent="." instance=ExtResource("2_eawnh")]
 position = Vector2(3072, 665)
 
 [node name="Player" parent="." instance=ExtResource("3_8efqd")]
-position = Vector2(197, 165.00002)
+position = Vector2(196.00002, 165)
 scale = Vector2(0.4, 0.4)
 collision_layer = 1
 collision_mask = 7
-player = 1
 sprite_frames = ExtResource("4_donj0")
 speed = 200.0
 jump_velocity = -390.0
@@ -37,6 +39,22 @@ zoom = Vector2(2.395, 2.395)
 limit_left = 0
 limit_bottom = 1080
 position_smoothing_enabled = true
+
+[node name="AttackHitbox" type="Area2D" parent="Player"]
+collision_layer = 0
+collision_mask = 8
+
+[node name="AttackCollisionShape" type="CollisionShape2D" parent="Player/AttackHitbox"]
+position = Vector2(97.499954, -67.5)
+scale = Vector2(5.216904, 3.891379)
+shape = SubResource("CapsuleShape2D_hpglo")
+disabled = true
+
+[node name="AttackDurationTimer" type="Timer" parent="Player"]
+one_shot = true
+
+[node name="AttackCooldownTimer" type="Timer" parent="Player"]
+one_shot = true
 
 [node name="HUD" parent="." instance=ExtResource("5_hpglo")]
 
@@ -110,7 +128,7 @@ position = Vector2(1427, 132)
 scale = Vector2(0.48000002, 0.48000002)
 
 [node name="Enemy" parent="." instance=ExtResource("9_t5rjf")]
-position = Vector2(701, 356)
+position = Vector2(704.00006, 356.00003)
 scale = Vector2(0.4, 0.4)
 collision_mask = 8
 
