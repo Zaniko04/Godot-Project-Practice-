@@ -323,7 +323,8 @@ func reset():
 	
 	## NEW: Add checks before trying to access nodes
 	if _attack_collision_shape:
-		_attack_collision_shape.disabled = true
+		## NEW: Use call_deferred() to avoid physics crash
+		_attack_collision_shape.call_deferred("set_disabled", true)
 	if _attack_duration_timer:
 		_attack_duration_timer.stop()
 	if _attack_cooldown_timer:
@@ -349,11 +350,6 @@ func _on_attack_hitbox_area_entered(area):
 	if parent:
 		print("The area's parent is: ", parent.name)
 		# We check if the parent exists AND has the "take_damage" function.
-		if parent.has_method("take_damage"):
-			print("Parent has take_damage! Calling it.")
-			# If it does, tell that parent (the Enemy) to run its function!
-			parent.take_damage()
-		else:
-			print("Parent does NOT have take_damage function.")
-	else:
-		print("Area has no parent.")
+	if parent and parent.has_method("take_damage"):
+		# If it does, tell that parent (the Enemy) to run its function!
+		parent.take_damage()

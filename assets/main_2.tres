@@ -1,6 +1,28 @@
-[gd_resource type="TileSet" load_steps=3 format=3 uid="uid://chc1g3d8pvk1x"]
+[gd_resource type="TileSet" load_steps=5 format=3 uid="uid://chc1g3d8pvk1x"]
 
+[ext_resource type="Texture2D" uid="uid://bmvaf52lk456e" path="res://assets/SpriteSheets/sprite sheet for objects.png" id="1_u03id"]
 [ext_resource type="Texture2D" uid="uid://dfnbyi10k4qjp" path="res://assets/imgs/TX Tileset Ground.png" id="1_vgo0f"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_hq7y8"]
+texture = ExtResource("1_u03id")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+0:1/0 = 0
+1:1/0 = 0
+0:2/0 = 0
+0:2/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, 16, -16, -16, 16, -16, 16, 16)
+0:3/0 = 0
+0:3/0/physics_layer_0/polygon_0/points = PackedVector2Array(-10.833445, -16, 16, -16, 16, 16, -10.833445, 16)
+1:3/0 = 0
+1:3/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+2:3/0 = 0
+2:3/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 10.196186, -16, 10.196186, 16, -16, 16)
+1:0/0 = 0
+2:0/0 = 0
+3:0/0 = 0
+4:0/0 = 0
+5:0/0 = 0
+0:4/0 = 0
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_8efqd"]
 texture = ExtResource("1_vgo0f")
@@ -341,3 +363,4 @@ tile_size = Vector2i(32, 32)
 physics_layer_0/collision_layer = 9
 physics_layer_0/collision_mask = 9
 sources/4 = SubResource("TileSetAtlasSource_8efqd")
+sources/0 = SubResource("TileSetAtlasSource_hq7y8")
